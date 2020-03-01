@@ -8,7 +8,7 @@ namespace Neuro
         private static readonly Random s_random = new Random();
         private readonly int _sqrNeurons;
 
-        private readonly double s_sigma, s_alpha;
+        private readonly double _sigma, _alpha;
 
         public int Iteration { get; private set; } = 0;
 
@@ -17,8 +17,8 @@ namespace Neuro
             _network = network;
             _sqrNeurons = (int)Math.Sqrt(_network[0].Neurons.Length);
 
-            s_sigma = DataVisualizing.Settings1.Default.Sigma;
-            s_alpha = DataVisualizing.Settings1.Default.Alpha;
+            _sigma = DataVisualizing.Settings1.Default.Sigma;
+            _alpha = DataVisualizing.Settings1.Default.Alpha;
         }
 
         public double RunEpoch(double[][] input, double[][] output)
@@ -50,8 +50,8 @@ namespace Neuro
                 var node = _network[0][j];
                 for (var i = 0; i < node.Weights.Length; i++)
                 {
-                    var sigma = _sqrNeurons * Math.Sqrt(2d) * Math.Exp(s_sigma * Iteration);
-                    var alpha = Math.Exp(s_alpha * Iteration);
+                    var sigma = _sqrNeurons * Math.Sqrt(2d) * Math.Exp(_sigma * Iteration);
+                    var alpha = Math.Exp(_alpha * Iteration);
                     if (sigma != 0 && alpha != 0)
                         node[i] += alpha * Math.Exp(-Distance(minNode % _sqrNeurons, minNode / _sqrNeurons, j % _sqrNeurons, j / _sqrNeurons) / (2d * sigma * sigma))
                             * (vector[i] - node[i]);

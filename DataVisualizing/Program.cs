@@ -22,7 +22,7 @@ namespace DataVisualizing
         private const int s_recSize = 60;
         private const int s_recDif = 2;
         private const int s_recBatchDif = 40;
-        private const int s_recLineCount = 9;
+        private const int s_recLineCount = 3;
 
         public static PointF[] FromCoordinates(int x, int y, int size)
         {
@@ -50,17 +50,36 @@ namespace DataVisualizing
         public static Color Lerp(Color from, Color to, double value) =>
             Color.FromArgb((int)((to.A - from.A) * value + from.A), (int)((to.R - from.R) * value + from.R), (int)((to.G - from.G) * value + from.G), (int)((to.B - from.B) * value + from.B));
 
+        public static List<double[]> ConvertIris(string[] lines, out List<double[]> checkIris)
+        {
+            var ret = new List<double[]>();
+            checkIris = new List<double[]>();
+            for (int j =0; j < lines.Length; j++)
+            {
+                var list = new List<double>();
+                var data = lines[j].Split(',');
+                for (int i = 0; i < data.Length - 1; i++)
+                    list.Add(System.Convert.ToDouble(data[i].Replace('.', ',')));
+                if (j % 50 < 47)
+                    ret.Add(list.ToArray());
+                else
+                    checkIris.Add(list.ToArray());
+            }
+            return ret;
+        }
+
         public static Image Draw(Neuron[] neurons, double[][] inputs)
         {
             var inputsCount = neurons[0].Weights.Length;
             var image = new Bitmap((s_recSize + s_recDif) * s_recXCount + (s_recLineCount - 1) * ((s_recSize + s_recDif) * s_recXCount + s_recBatchDif) + s_recSize / 2,
-                                    neurons.Length / s_recXCount * (s_recSize + s_recDif) + inputsCount / s_recLineCount * ((s_recSize + s_recDif) * neurons.Length / s_recXCount));
+                                    neurons.Length / s_recXCount * (s_recSize + s_recDif) + (inputsCount - 1) / s_recLineCount * ((s_recSize + s_recDif) * neurons.Length / s_recXCount) +
+                                    neurons.Length / s_recXCount * (s_recSize + s_recDif) + inputs.Length / s_recLineCount * ((s_recSize + s_recDif) * neurons.Length / s_recXCount));
             var graphics = Graphics.FromImage(image);
             graphics.FillRectangle(Brushes.White, 0, 0, image.Size.Width, image.Size.Height);
 
             var font = new Font(SystemFonts.DefaultFont.FontFamily, 60f);
 
-            void Draw(int inpCount, int startI, Func<int, int, double> assign, int startPosY)
+            void Draw(int inpCount, Func<int, string> getString, Func<int, int, double> assign, int startPosY)
             {
                 for (var i = 0; i < inpCount; i++)
                 {
@@ -90,14 +109,24 @@ namespace DataVisualizing
                         graphics.FillPolygon(new SolidBrush(color), points);
                     }
 
-                    graphics.DrawString((i + startI).ToString(), font, Brushes.Black,
+                    graphics.DrawString(getString(i), font, Brushes.Black,
                         i % s_recLineCount * ((s_recSize + s_recDif) * s_recXCount + s_recBatchDif) + (s_recXCount - 1) * (s_recSize + s_recDif) / 2 - font.Size / 2f,
                         i / s_recLineCount * ((s_recSize + s_recDif) * neurons.Length / s_recXCount) + (neurons.Length - 1) / s_recXCount * (s_recSize + s_recDif) - font.Size / 2f + startPosY);
                 }
             }
 
-            Draw(inputsCount, 0, (i, j) => neurons[j][i], 0);
-            Draw(inputs.Length, 2010, (i, j) => EuclidianDistance(neurons[j], inputs[i]), neurons.Length / s_recXCount * (s_recSize + s_recDif) + (inputsCount - 1) / s_recLineCount * ((s_recSize + s_recDif) * neurons.Length / s_recXCount));
+            Draw(inputsCount, (i) => i.ToString(), (i, j) => neurons[j][i], 0);
+            Draw(inputs.Length, 
+                (i) =>
+                {
+                    if (i < 3)
+                        return $"Iris-setosa ({i % 3})";
+                    if (i < 6)
+                        return $"Iris-Versicolor ({i % 3})";
+                    return $"Iris-virginica ({i % 3})";
+                }, 
+                (i, j) => EuclidianDistance(neurons[j], inputs[i]), 
+                neurons.Length / s_recXCount * (s_recSize + s_recDif) + (inputsCount - 1) / s_recLineCount * ((s_recSize + s_recDif) * neurons.Length / s_recXCount));
 
             return image;
         }
@@ -141,25 +170,8 @@ namespace DataVisualizing
             return network.Compute(data.ToArray());
         }
 
-        private static int s_recXCount;
-
-        public static void Main()
+        internal static void Menu(Settings1 settings)
         {
-            var data = new string[]
-            {
-                "Data/2010.txt",
-                "Data/2011.txt",
-                "Data/2012.txt",
-                "Data/2013.txt",
-                "Data/2014.txt",
-                "Data/2015.txt",
-                "Data/2016.txt",
-                "Data/2017.txt",
-                "Data/2018.txt"
-            };
-
-            var settings = Settings1.Default;
-
             string input;
             do
             {
@@ -196,10 +208,33 @@ namespace DataVisualizing
 
             s_recXCount = settings.NeruonsCount;
             settings.Save();
+        }
 
-            var epochData = new List<double[]>(data.Length);
-            for (var i = 0; i < data.Length - 1; i++)
-                epochData.Add(Convert(File.ReadAllLines(data[i])).ToArray());
+        private static int s_recXCount;
+
+        public static void Main()
+        {
+            //var data = new string[]
+            //{
+            //    "Data/2010.txt",
+            //    "Data/2011.txt",
+            //    "Data/2012.txt",
+            //    "Data/2013.txt",
+            //    "Data/2014.txt",
+            //    "Data/2015.txt",
+            //    "Data/2016.txt",
+            //    "Data/2017.txt",
+            //    "Data/2018.txt"
+            //};
+
+            var settings = Settings1.Default;
+            Menu(settings);
+
+            //var epochData = new List<double[]>(data.Length);
+            //for (var i = 0; i < data.Length - 1; i++)
+            //    epochData.Add(Convert(File.ReadAllLines(data[i])).ToArray());
+
+            var epochData = ConvertIris(File.ReadAllLines("Data/iris.data"), out var checkIris);
 
             var network = new SelfOrganizingMap(epochData[0].Length, settings.NeruonsCount);
             var teacher = new SelfOrganizingMapTeacher(network);
@@ -220,11 +255,11 @@ namespace DataVisualizing
                 Console.WriteLine(res);
             }
 
-            epochData.Add(Convert(File.ReadLines(data[data.Length - 1])).ToArray());
+            //epochData.Add(Convert(File.ReadLines(data[data.Length - 1])).ToArray());
 
             Console.WriteLine($"min value: {maxres}");
             using (var stream = new FileStream("image.png", FileMode.Create))
-                Draw(minNetwork[0].Neurons, epochData.ToArray()).Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                Draw(minNetwork[0].Neurons, checkIris.ToArray()).Save(stream, System.Drawing.Imaging.ImageFormat.Png);
 
             System.Diagnostics.Process.Start("image.png");
         }
